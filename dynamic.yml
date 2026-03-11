@@ -1,31 +1,25 @@
 ---
-- name: "F5 Simulation: Dynamic Site Weight Manager"
+- name: "F5 Simulation: Manual Input Member Manager"
   hosts: all
   become: yes
   
-  # Variabel ini akan diisi otomatis dari Survey AWX
-  vars:
-    # Nama backend di haproxy.cfg kamu (site_distribution)
-    pool_name: "{{ survey_pool_name }}" 
-    # Nama member (Site-A-Jagakarsa / Site-B-Jogja)
-    member_name: "{{ survey_member_name }}"
-    # Angka weight (0-100)
-    target_weight: "{{ survey_weight }}"
-
   tasks:
-    - name: "Update Weight untuk Member {{ member_name }}"
+    - name: "Cek apakah Member ada di HAProxy"
       shell: |
-        echo "set server {{ pool_name }}/{{ member_name }} weight {{ target_weight }}" | socat stdio /run/haproxy/admin.sock
-      register: command_output
+        echo "show stat" | socat stdio /run/haproxy/admin.sock | grep "{{ v_member_name }}"
+      register: check_member
+      ignore_errors: yes
 
-    - name: "Verifikasi Perubahan di HAProxy"
+    - name: "Gagal jika Member tidak ditemukan"
+      fail:
+        msg: "Error: Member '{{ v_member_name }}' tidak ditemukan di HAProxy!"
+      when: check_member.rc != 0
+
+    - name: "Update Weight untuk {{ v_member_name }}"
       shell: |
-        echo "show stat" | socat stdio /run/haproxy/admin.sock | grep "{{ member_name }}" | cut -d ',' -f 1,2,18,19
-      register: verify_output
+        echo "set server site_distribution/{{ v_member_name }} weight {{ v_weight }}" | socat stdio /run/haproxy/admin.sock
+      when: check_member.rc == 0
 
-    - name: "Status Report"
+    - name: "Konfirmasi Hasil"
       debug:
-        msg: 
-          - "Backend: {{ pool_name }}"
-          - "Member: {{ member_name }}"
-          - "Status Sekarang: {{ verify_output.stdout }}"
+        msg: "Berhasil! Member {{ v_member_name }} sekarang memiliki Weight {{ v_weight }}"
