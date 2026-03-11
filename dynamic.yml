@@ -1,25 +1,34 @@
 ---
-- name: "F5 Simulation: Manual Input Member Manager"
+- name: "F5 Simulation: Auto Balanced Weight"
   hosts: all
   become: yes
   
+  vars:
+    # Diambil dari Survey
+    primary_site: "{{ v_member_name }}"
+    primary_weight: "{{ v_weight | int }}"
+    
+    # Logika Matematika: 100 - input_kamu
+    secondary_weight: "{{ 100 - (v_weight | int) }}"
+
   tasks:
-    - name: "Cek apakah Member ada di HAProxy"
+    - name: "Cek Daftar Member di Pool"
       shell: |
-        echo "show stat" | socat stdio /run/haproxy/admin.sock | grep "{{ v_member_name }}"
-      register: check_member
-      ignore_errors: yes
+        echo "show stat" | socat stdio /run/haproxy/admin.sock | grep "site_distribution" | cut -d ',' -f 2
+      register: all_members
 
-    - name: "Gagal jika Member tidak ditemukan"
-      fail:
-        msg: "Error: Member '{{ v_member_name }}' tidak ditemukan di HAProxy!"
-      when: check_member.rc != 0
-
-    - name: "Update Weight untuk {{ v_member_name }}"
+    - name: "Set Weight Site Prioritas ({{ primary_site }}) ke {{ primary_weight }}"
       shell: |
-        echo "set server site_distribution/{{ v_member_name }} weight {{ v_weight }}" | socat stdio /run/haproxy/admin.sock
-      when: check_member.rc == 0
+        echo "set server site_distribution/{{ primary_site }} weight {{ primary_weight }}" | socat stdio /run/haproxy/admin.sock
 
-    - name: "Konfirmasi Hasil"
+    - name: "Set Weight Site Lainnya ke {{ secondary_weight }}"
+      shell: |
+        echo "set server site_distribution/{{ item }} weight {{ secondary_weight }}" | socat stdio /run/haproxy/admin.sock
+      loop: "{{ all_members.stdout_lines }}"
+      when: item != primary_site and item != ""
+      # Loop ini akan mencari semua member selain yang kamu pilih, 
+      # lalu otomatis kasih sisa weight-nya.
+
+    - name: "Tampilkan Hasil Akhir"
       debug:
-        msg: "Berhasil! Member {{ v_member_name }} sekarang memiliki Weight {{ v_weight }}"
+        msg: "Berhasil! {{ primary_site }} di-set {{ primary_weight }}, site lainnya otomatis {{ secondary_weight }}"
