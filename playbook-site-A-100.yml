@@ -1,25 +1,19 @@
 ---
-- name: "Failover: Pindahkan 100% Trafik ke Site A"
+- name: "Failover: Paksa 100% Trafik ke Site A (Native Shell)"
   hosts: all
   become: yes
-
-  # WAJIB ADA INI
-  collections:
-    - community.general
-
+  
   tasks:
-    - name: "Set Site A ke 100% (Full Capacity)"
-      haproxy:  # Setelah pakai collections di atas, panggil 'haproxy' saja cukup
-        socket: /run/haproxy/admin.sock
-        backend: site_distribution
-        host: Site-A-Jagakarsa
-        weight: 100
-        state: enabled
+    - name: "Set Site A ke Weight 100"
+      shell: |
+        echo "set server site_distribution/Site-A-Jagakarsa weight 100" | socat stdio /run/haproxy/admin.sock
+      register: result_a
 
-    - name: "Set Site B ke 0% (Drain Traffic)"
-      haproxy:
-        socket: /run/haproxy/admin.sock
-        backend: site_distribution
-        host: Site-B-Jogja
-        weight: 0
-        state: enabled
+    - name: "Set Site B ke Weight 0 (Drain)"
+      shell: |
+        echo "set server site_distribution/Site-B-Jogja weight 0" | socat stdio /run/haproxy/admin.sock
+      register: result_b
+
+    - name: "Tampilkan Hasil Konfirmasi"
+      debug:
+        msg: "Berhasil memindahkan trafik ke Site A Jagakarsa!"
