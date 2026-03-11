@@ -1,0 +1,26 @@
+---
+- name: "Restore: Kembalikan Trafik Normal (Active-Active)"
+  hosts: all
+  become: yes
+  
+  tasks:
+    - name: "Aktifkan Kembali Site B dari Maintenance"
+      shell: |
+        echo "set server site_distribution/Site-B-Jogja state ready" | socat stdio /run/haproxy/admin.sock
+
+    - name: "Reset Weight Site A ke 50"
+      shell: |
+        echo "set server site_distribution/Site-A-Jagakarsa weight 50" | socat stdio /run/haproxy/admin.sock
+
+    - name: "Reset Weight Site B ke 50"
+      shell: |
+        echo "set server site_distribution/Site-B-Jogja weight 50" | socat stdio /run/haproxy/admin.sock
+
+    - name: "Verifikasi Status"
+      shell: |
+        echo "show stat" | socat stdio /run/haproxy/admin.sock | grep "site_distribution" | cut -d ',' -f 1,2,18,19
+      register: final_status
+
+    - name: "Tampilkan Status Terbaru"
+      debug:
+        msg: "{{ final_status.stdout_lines }}"
