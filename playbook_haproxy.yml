@@ -1,23 +1,16 @@
 ---
-- name: "Simulasi F5: Manage Pool Member Weight"
+- name: "Cek Koneksi, IP, dan OS Target"
   hosts: all
-  become: yes
-  vars:
-    # Nama backend dan server harus SAMA dengan yang ada di /etc/haproxy/haproxy.cfg
-    target_backend: "my_app_pool"
-    server_name: "server-A"
-    new_weight: 80
+  gather_facts: yes  # Ini otomatis akan mengambil data IP dan OS
 
   tasks:
-    - name: "Ubah Weight Member secara Runtime"
-      community.general.haproxy:
-        socket: /run/haproxy/admin.sock
-        backend: "{{ target_backend }}"
-        host: "{{ server_name }}"
-        weight: "{{ new_weight }}"
-        state: enabled
-      register: result
-
-    - name: "Konfirmasi Perubahan"
+    - name: "Tampilkan Info Hostname dan OS"
       debug:
-        msg: "Status: {{ result.msg }} | Weight {{ server_name }} sekarang: {{ new_weight }}"
+        msg: 
+          - "Hostname: {{ ansible_hostname }}"
+          - "Sistem Operasi: {{ ansible_distribution }} {{ ansible_distribution_version }}"
+          - "Arsitektur: {{ ansible_architecture }}"
+
+    - name: "Tampilkan Alamat IP Host"
+      debug:
+        msg: "Alamat IP di Server ini adalah: {{ ansible_default_ipv4.address }}"
