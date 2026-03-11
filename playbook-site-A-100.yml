@@ -1,19 +1,14 @@
 ---
-- name: "Failover: Paksa 100% Trafik ke Site A (Native Shell)"
+- name: "Failover: Paksa 100% Trafik ke Site A Jagakarsa"
   hosts: all
   become: yes
   
   tasks:
-    - name: "Set Site A ke Weight 100"
+    - name: "Matikan Site Jogja (Set Maintenance Mode)"
       shell: |
+        echo "set server site_distribution/Site-B-Jogja state maint" | socat stdio /run/haproxy/admin.sock
+
+    - name: "Pastikan Site Jagakarsa Aktif (Set Ready Mode)"
+      shell: |
+        echo "set server site_distribution/Site-A-Jagakarsa state ready" | socat stdio /run/haproxy/admin.sock
         echo "set server site_distribution/Site-A-Jagakarsa weight 100" | socat stdio /run/haproxy/admin.sock
-      register: result_a
-
-    - name: "Set Site B ke Weight 0 (Drain)"
-      shell: |
-        echo "set server site_distribution/Site-B-Jogja weight 0" | socat stdio /run/haproxy/admin.sock
-      register: result_b
-
-    - name: "Tampilkan Hasil Konfirmasi"
-      debug:
-        msg: "Berhasil memindahkan trafik ke Site A Jagakarsa!"
