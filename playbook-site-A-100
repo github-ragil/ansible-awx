@@ -1,0 +1,23 @@
+---
+- name: "Failover: Pindahkan 100% Trafik ke Site A"
+  hosts: all
+  become: yes
+  collections:
+    - community.general
+
+  tasks:
+    - name: "Set Site A ke 100% (Full Capacity)"
+      community.general.haproxy:
+        socket: /run/haproxy/admin.sock
+        backend: site_distribution
+        host: Site-A-Jagakarsa
+        weight: 100
+        state: enabled
+
+    - name: "Set Site B ke 0% (Drain Traffic)"
+      community.general.haproxy:
+        socket: /run/haproxy/admin.sock
+        backend: site_distribution
+        host: Site-B-Jogja
+        weight: 0
+        state: enabled
