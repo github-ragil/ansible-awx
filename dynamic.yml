@@ -1,0 +1,31 @@
+---
+- name: "F5 Simulation: Dynamic Site Weight Manager"
+  hosts: all
+  become: yes
+  
+  # Variabel ini akan diisi otomatis dari Survey AWX
+  vars:
+    # Nama backend di haproxy.cfg kamu (site_distribution)
+    pool_name: "{{ survey_pool_name }}" 
+    # Nama member (Site-A-Jagakarsa / Site-B-Jogja)
+    member_name: "{{ survey_member_name }}"
+    # Angka weight (0-100)
+    target_weight: "{{ survey_weight }}"
+
+  tasks:
+    - name: "Update Weight untuk Member {{ member_name }}"
+      shell: |
+        echo "set server {{ pool_name }}/{{ member_name }} weight {{ target_weight }}" | socat stdio /run/haproxy/admin.sock
+      register: command_output
+
+    - name: "Verifikasi Perubahan di HAProxy"
+      shell: |
+        echo "show stat" | socat stdio /run/haproxy/admin.sock | grep "{{ member_name }}" | cut -d ',' -f 1,2,18,19
+      register: verify_output
+
+    - name: "Status Report"
+      debug:
+        msg: 
+          - "Backend: {{ pool_name }}"
+          - "Member: {{ member_name }}"
+          - "Status Sekarang: {{ verify_output.stdout }}"
